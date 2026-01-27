@@ -5,9 +5,13 @@
 #============================================================================
 import time, os, sys
 from lib.mfrc522 import SimpleMFRC522
-from lib.keyboard_layouts import klavye,hu_iso_mac,hu_iso_win
+from lib.keyboard_layouts import klavye,hu_iso_mac,hu_iso_win,en_iso_win
 from machine import Pin, Timer
 from time import sleep, ticks_ms, ticks_diff
+#============================================================================
+#VERSION NUMBER:
+#============================================================================
+version = 1.1
 #============================================================================
 #PIN_Layout set_up:(HELP)
 #============================================================================
@@ -45,10 +49,22 @@ reader = SimpleMFRC522(spi_id=0,sck=18,miso=16,mosi=19,cs=17,rst=9)
 #============================================================================
 # KEYBOARD_AND_MODE_SETTING:
 #============================================================================
-k = hu_iso_win.hidkeyboard()
-mode = "1040" #Selectable modes: [antares,1040,dmc]
+k = en_iso_win.hidkeyboard()
+mode = "antares" #Selectable modes: [antares,1040,dmc]
+state = True #If True it's in read mode if it's in False mode then it will write
 #============================================================================
-# FUNCTION_BLOCKS
+# SECRET_KEY_FOR_ENCODING:
+#============================================================================
+'''
+def load_secret_key(path="lib/secret_key.txt"):
+    with open(path, "r") as f:
+        return f.read().strip().encode("utf-8")
+    
+secret_key = load_secret_key()
+print(secret_key)
+'''
+#============================================================================
+# FUNCTION_BLOCKS_FOR_LED:
 #============================================================================
 timer_led = Timer()
 
@@ -145,6 +161,7 @@ def send_antares(keyboard, user, pwd):
     
     keyboard.write(user)
     keyboard.tab()
+    time.sleep(1)
     keyboard.write(pwd)
     keyboard.enter()
     
@@ -160,10 +177,10 @@ def send_bec1040(keyboard, user, pwd):
     #Writing:
     keyboard.write(user)
     keyboard.enter()
-    time.sleep(2)
+    time.sleep(1.5)
     keyboard.write(pwd)
     keyboard.enter()
-    time.sleep(2)
+    time.sleep(1.5)
     keyboard.enter()
     
     #Com_end:
@@ -197,6 +214,17 @@ def wait_repl_connect(timeout=10):
         else:
             print("REPL not active but app will start up anyway.")
             return False
+        
+#============================================================================
+# Encryption_Decryption:
+#============================================================================
+secret_key = " "
+
+def encryption():
+    pass
+
+def decryption():
+    pass
 #============================================================================
 # Setting pin states
 #============================================================================        
@@ -209,7 +237,7 @@ green_led.off()
 #============================================================================
 # Main_cycle:
 #============================================================================
-while True:
+while state:
             print("System start to run")
             green_led.on()
             
@@ -239,6 +267,7 @@ while True:
             wait_until_card_removed(reader)
 
             
+
 
 
 
