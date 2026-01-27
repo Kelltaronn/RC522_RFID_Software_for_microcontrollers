@@ -53,7 +53,18 @@ k = en_iso_win.hidkeyboard()
 mode = "antares" #Selectable modes: [antares,1040,dmc]
 state = True #If True it's in read mode if it's in False mode then it will write
 #============================================================================
-# FUNCTION_BLOCKS
+# SECRET_KEY_FOR_ENCODING:
+#============================================================================
+'''
+def load_secret_key(path="lib/secret_key.txt"):
+    with open(path, "r") as f:
+        return f.read().strip().encode("utf-8")
+    
+secret_key = load_secret_key()
+print(secret_key)
+'''
+#============================================================================
+# FUNCTION_BLOCKS_FOR_LED:
 #============================================================================
 timer_led = Timer()
 
