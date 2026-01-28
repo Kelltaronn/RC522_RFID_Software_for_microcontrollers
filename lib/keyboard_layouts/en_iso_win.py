@@ -39,7 +39,7 @@ class hidkeyboard:
         "0": [0x27], ")": [k.MOD_LEFT_SHIFT, 0x27],
         "1": [0x1E], "!": [k.MOD_LEFT_SHIFT, 0x1E],
         "2": [0x1F], '@': [k.MOD_LEFT_SHIFT, 0x1F],
-        "3": [0x20], "#": [k.MOD_LEFT_SHIFT, 0x1F],
+        "3": [0x20], "#": [k.MOD_LEFT_SHIFT, 0x20],
         "4": [0x21], "$": [k.MOD_LEFT_SHIFT, 0x21],
         "5": [0x22], "%": [k.MOD_LEFT_SHIFT, 0x22],
         "6": [0x23], "^": [k.MOD_LEFT_SHIFT, 0x22],
@@ -88,4 +88,8 @@ class hidkeyboard:
         
     def enter(self):
         self.k.press(0x28)
+        self.k.release_all()
+        
+    def space(self):
+        self.k.press(0x2C)
         self.k.release_all()

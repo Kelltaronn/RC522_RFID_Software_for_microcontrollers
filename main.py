@@ -50,7 +50,7 @@ reader = SimpleMFRC522(spi_id=0,sck=18,miso=16,mosi=19,cs=17,rst=9)
 # KEYBOARD_AND_MODE_SETTING:
 #============================================================================
 k = en_iso_win.hidkeyboard()
-mode = "antares" #Selectable modes: [antares,1040,dmc]
+mode = "1040" #Selectable modes: [antares,1040,dmc]
 state = True #If True it's in read mode if it's in False mode then it will write
 #============================================================================
 # SECRET_KEY_FOR_ENCODING:
@@ -85,7 +85,7 @@ def read():
     print("Reading...Please Place the Card...")
     idRead, textRead = reader.read()
     print("Login credentials:{} for ID:{}".format(textRead,idRead))
-    time.sleep(2)
+    time.sleep(1)
     return textRead
     
 def write():
@@ -154,10 +154,14 @@ def wait_until_card_removed(reader, poll_ms=80):
 #============================================================================
 # Funkció_blokkok, Géptípusok:
 #============================================================================
+
+#Time_parameters:
+frequency = 10
+blink_time = 5
             
 def send_antares(keyboard, user, pwd):
     #Com_start:
-    blink_for_time(yellow_led, 10, 2)
+    blink_for_time(yellow_led, frequency, blink_time)
     
     keyboard.write(user)
     keyboard.tab()
@@ -172,15 +176,19 @@ def send_bec1040(keyboard, user, pwd):
     #Ciklus: USER,ENTER,PWD,ENTER,ENTER
     
     #Com_start:
-    blink_for_time(yellow_led, 10, 2)
+    blink_for_time(yellow_led, frequency, blink_time)
     
     #Writing:
+    #Space beírása és teszt
+    keyboard.space()
     keyboard.write(user)
     keyboard.enter()
-    time.sleep(1.5)
+    time.sleep(0.5)
+    
     keyboard.write(pwd)
     keyboard.enter()
-    time.sleep(1.5)
+    time.sleep(0.5)
+    
     keyboard.enter()
     
     #Com_end:
@@ -189,7 +197,7 @@ def send_bec1040(keyboard, user, pwd):
 def send_dmc(keyboard, user, pwd):
     
     #Com_start:
-    blink_for_time(yellow_led, 10, 2)
+    blink_for_time(yellow_led, frequency, blink_time)
     
     #Writing:
     keyboard.write(pwd)
