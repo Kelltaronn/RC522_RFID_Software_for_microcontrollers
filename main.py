@@ -237,6 +237,7 @@ while True:
                 print("Not found machine name error.Please change name.")
                 red_led.on()
             wait_until_card_removed(reader)
+            
 
             
 
