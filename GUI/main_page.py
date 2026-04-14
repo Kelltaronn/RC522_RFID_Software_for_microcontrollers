@@ -1,83 +1,132 @@
+
+import sys
 import serial
-import time
+import serial.tools.list_ports
 import threading
-
-ser = serial.Serial('/dev/cu.usbmodem11301', 9600, timeout=1)
-
-time.sleep(2)
-
-state = "WAIT_READY"
-latest_line = None
-lock = threading.Lock()
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QPushButton,
+    QLineEdit, QTextEdit, QComboBox, QLabel
+)
 
 
-# -------------------------
-# READ THREAD
-# -------------------------
-def read_from_pico():
-    global latest_line
+class RFIDApplication(QWidget):
+    def __init__(self):
+        super().__init__()
 
-    while True:
-        line = ser.readline()
+        self.ser = None
+        self.state = "WAIT_READY"
 
-        if line:
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+
+        # COM selector
+        self.port_box = QComboBox()
+        self.refresh_ports()
+        layout.addWidget(QLabel("Select COM Port:"))
+        layout.addWidget(self.port_box)
+
+        self.refresh_btn = QPushButton("Refresh Ports")
+        self.refresh_btn.clicked.connect(self.refresh_ports)
+        layout.addWidget(self.refresh_btn)
+
+        self.connect_btn = QPushButton("Connect")
+        self.connect_btn.clicked.connect(self.connect_serial)
+        layout.addWidget(self.connect_btn)
+
+        # Username / Password
+        self.username = QLineEdit()
+        self.username.setPlaceholderText("Username")
+        layout.addWidget(self.username)
+
+        self.password = QLineEdit()
+        self.password.setPlaceholderText("Password")
+        layout.addWidget(self.password)
+
+        self.send_btn = QPushButton("Write to RFID")
+        self.send_btn.clicked.connect(self.send_write)
+        layout.addWidget(self.send_btn)
+
+        # Log output
+        self.log = QTextEdit()
+        self.log.setReadOnly(True)
+        layout.addWidget(self.log)
+
+        self.setLayout(layout)
+        self.setWindowTitle("RFID Writer")
+
+    # -------------------------
+    # SERIAL PORT HANDLING
+    # -------------------------
+    def refresh_ports(self):
+        self.port_box.clear()
+        ports = serial.tools.list_ports.comports()
+        for port in ports:
+            self.port_box.addItem(port.device)
+
+    def connect_serial(self):
+        port = self.port_box.currentText()
+
+        try:
+            self.ser = serial.Serial(port, 9600, timeout=1)
+            self.log.append(f"Connected to {port}")
+
+            threading.Thread(target=self.read_thread, daemon=True).start()
+
+            self.send("PING")
+
+        except Exception as e:
+            self.log.append(f"Connection error: {e}")
+
+    # -------------------------
+    # SERIAL COMMUNICATION
+    # -------------------------
+    def send(self, cmd):
+        if self.ser:
+            self.ser.write((cmd + "\n").encode())
+
+    def read_thread(self):
+        while True:
             try:
-                text = line.decode().strip()
-
-                with lock:
-                    latest_line = text
-
-                print("[PICO]", text)
-
+                line = self.ser.readline()
+                if line:
+                    text = line.decode().strip()
+                    self.handle_line(text)
             except:
                 pass
 
-
-# -------------------------
-# WRITE HELP
-# -------------------------
-def send(cmd):
-    ser.write((cmd + "\n").encode())
-
-
-# -------------------------
-# START THREAD
-# -------------------------
-threading.Thread(target=read_from_pico, daemon=True).start()
-
-
-
-# -------------------------
-# MAIN STATE MACHINE
-# -------------------------
-send("PING")
-while True:
-    time.sleep(0.05)
-
-    with lock:
-        line = latest_line
-        latest_line = None
-
-    if not line:
-        continue
-
     # -------------------------
-    # STATE LOGIC
+    # STATE MACHINE
     # -------------------------
+    def handle_line(self, line):
+        self.log.append(f"[PICO] {line}")
 
-    if state == "WAIT_READY":
-        if line == "READY":
-            print("Pico ready → asking user input")
+        if self.state == "WAIT_READY":
+            if line == "READY":
+                self.log.append("Ready for write")
 
-            username = input("Username: ")
-            password = input("Password: ")
+        elif self.state == "WAIT_DONE":
+            if line == "DONE":
+                self.log.append("RFID write finished")
+                self.state = "WAIT_READY"
 
-            send(f"WRITE:{username}/{password}")
+    def send_write(self):
+        user = self.username.text()
+        pw = self.password.text()
 
-            state = "WAIT_DONE"
+        if not user or not pw:
+            self.log.append("Username/password missing")
+            return
+
+        self.send(f"WRITE:{user}/{pw}")
+        self.state = "WAIT_DONE"
 
 
-    elif state == "WAIT_DONE":
-        if line == "DONE":
-            print("RFID write finished")
-            state = "WAIT_READY"
+# -------------------------
+# RUN APP
+# -------------------------
+app = QApplication(sys.argv)
+window = RFIDApplication()
+window.show()
+sys.exit(app.exec())

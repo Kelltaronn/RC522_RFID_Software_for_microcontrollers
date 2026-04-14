@@ -11,8 +11,6 @@ from time import sleep, ticks_ms, ticks_diff
 #============================================================================
 #VERSION NUMBER:
 #============================================================================
-version = 1.1
-#============================================================================
 #PIN_Layout set_up:(HELP)
 #============================================================================
 """
@@ -49,9 +47,9 @@ reader = SimpleMFRC522(spi_id=0,sck=18,miso=16,mosi=19,cs=17,rst=9)
 #============================================================================
 # KEYBOARD_AND_MODE_SETTING:
 #============================================================================
-k = en_iso_win.hidkeyboard()
-mode = "1040" #Selectable modes: [antares,1040,dmc]
-state = True #If True it's in read mode if it's in False mode then it will write
+keyboard = en_iso_win.hidkeyboard()
+machine = "1040" #Selectable modes: [antares,1040,dmc]
+mode = "write" #Selectable modes: [read,write]
 #============================================================================
 # SECRET_KEY_FOR_ENCODING:
 #============================================================================
@@ -67,6 +65,9 @@ print(secret_key)
 # FUNCTION_BLOCKS_FOR_LED:
 #============================================================================
 timer_led = Timer()
+#Time_parameters:
+frequency = 10
+blink_time = 5
 
 def blink_for_time(led, freq, duration_sec):
     period = 1 / freq
@@ -87,23 +88,15 @@ def read():
     print("Login credentials:{} for ID:{}".format(textRead,idRead))
     time.sleep(1)
     return textRead
+
+def write_card(username,password):
     
-def write():
-    username = input("Give me the username:")
-    password = input("Give me the password:")
-    confirm_password = input("Confirm the password:")
-    try:
-        if password == confirm_password:
-            data = str(username)+ " / " + str(password)
-            print(data)
-            print("....Place the RFID tag for writting....")
-            reader.write(data)
-        else:
-            raise Exception('Run_Error')
-    except Exception as inst:
-        print(type(inst))
-        print(inst.arg)
-        print(inst)
+    data = str(username)+ " / " + str(password)
+    
+    yellow_led.on()
+    print("Place card to write...")
+    blink_for_time(yellow_led, frequency, blink_time)
+    reader.write(data)
        
 def parse_credentials(text):
     text = (text or "").strip()
@@ -116,11 +109,9 @@ def parse_credentials(text):
         return None, None
 
     return u.strip(), p.strip()
-
 #============================================================================
 # EDGE_TRIGGER_BLOCK
 #============================================================================
-
 def wait_until_card_removed(reader, poll_ms=80):
     while True:
         try:
@@ -153,12 +144,7 @@ def wait_until_card_removed(reader, poll_ms=80):
 
 #============================================================================
 # Funkció_blokkok, Géptípusok:
-#============================================================================
-
-#Time_parameters:
-frequency = 10
-blink_time = 5
-            
+#============================================================================            
 def send_antares(keyboard, user, pwd):
     #Com_start:
     blink_for_time(yellow_led, frequency, blink_time)
@@ -207,22 +193,18 @@ def send_dmc(keyboard, user, pwd):
     yellow_led.off()
                                    
 #============================================================================
-# Funkció_blokkok, REPL_Kapcsolat
-# Kelltaronn_Edition
+# Parse
 #============================================================================
-
-def wait_repl_connect(timeout=10):
-    """Waiting for REPL"""
-    print("I started to set up the REPL")
-    for i in range(timeout * 10):
-        if os.dupterm() is not None: #If this true the repl is up
-            print("REPL is active app will start up.")
-            return True
-            
-        else:
-            print("REPL not active but app will start up anyway.")
-            return False
-        
+def parse_command(cmd):
+    parts = cmd.strip().split("|")
+    
+    if parts[0] == "WRITE" and len(parts) == 3:
+        return ("WRITE", parts[1], parts[2])
+    
+    elif parts[0] == "READ":
+        return ("READ",)
+    
+    return None
 #============================================================================
 # Encryption_Decryption:
 #============================================================================
@@ -237,7 +219,7 @@ def decryption():
 # Setting pin states
 #============================================================================        
 
-"PIN_SETTER"
+"PIN_SETTER_AT_START"
 red_led.off()
 yellow_led.off()
 green_led.off()
@@ -245,34 +227,66 @@ green_led.off()
 #============================================================================
 # Main_cycle:
 #============================================================================
-while state:
-            print("System start to run")
+while True:
+            
             green_led.on()
             
-            #Data Read and parseing:
-            data = read()
-            username, password = parse_credentials(data)
-            
-            if not username or not password:
-                red_led.on()
-                print("Error:Data format incorrect", data)
-                continue
-            
-            #Line_mode_shifter:                         
-            if mode == "antares":
-                send_antares(k, username, password)
+            if mode == "read":
+                print("System start to run")
+                #Data Read and parseing:
+                data = read()
+                username, password = parse_credentials(data)
+                
+                if not username or not password:
+                    red_led.on()
+                    print("Error:Data format incorrect", data)
+                    continue
+                
+                #Line_mode_shifter:                         
+                if machine == "antares":
+                    send_antares(keyboard, username, password)
 
-            elif mode == "1040":
-                send_bec1040(k, username, password)
-            
-            elif mode == "dmc":
-                send_dmc(k, username, password)
-            
-            else:
-                raise NameError("Not found machine name.")
-                print("Not found machine name error.Please change name.")
-                red_led.on()
-            wait_until_card_removed(reader)
+                elif machine == "1040":
+                    send_bec1040(keyboard, username, password)
+                
+                elif machine == "dmc":
+                    send_dmc(keyboard, username, password)
+                
+                else:
+                    red_led.on()
+                    print("Not found machine name error.Please change name.")
+                    raise NameError("Not found machine name.")
+                wait_until_card_removed(reader)
+                
+            elif mode == "write":
+                cmd = sys.stdin.readline().strip()
+
+                if not cmd:
+                    continue
+
+                print("CMD from PC:", cmd)
+
+                # handshake
+                if cmd == "PING":
+                    print("READY")
+
+                # write command
+                elif cmd.startswith("WRITE:"):
+                    print("DATA_OK")
+
+                    try:
+                        payload = cmd.replace("WRITE:", "")
+                        user, pwd = payload.split("/")
+
+                        write_card(user, pwd)
+
+                        print("WRITTEN")
+                        print("DONE")
+
+                    except Exception as e:
+                        print("ERROR", e)
+
+            time.sleep(0.05)
             
 
             
