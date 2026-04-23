@@ -1,13 +1,15 @@
 #!/usr/bin/env python
-# Kelltaronn_Edition
 #============================================================================
 #Imports
 #============================================================================
 import time, os, sys
 from lib.mfrc522 import SimpleMFRC522
-from lib.keyboard_layouts import klavye,hu_iso_mac,hu_iso_win,en_iso_win
+from lib.keyboard_layouts import klavye, hu_iso_mac, hu_iso_win, en_iso_win
 from machine import Pin, Timer
 from time import sleep, ticks_ms, ticks_diff
+from lib.machines.machines import manufacturing_machine
+from lib.LED_functions.LED_blink import blink_for_time
+from RFID_write import rfid_write
 #============================================================================
 #VERSION NUMBER:
 #============================================================================
@@ -48,8 +50,13 @@ reader = SimpleMFRC522(spi_id=0,sck=18,miso=16,mosi=19,cs=17,rst=9)
 # KEYBOARD_AND_MODE_SETTING:
 #============================================================================
 keyboard = en_iso_win.hidkeyboard()
-machine = "1040" #Selectable modes: [antares,1040,dmc]
+machine_type = "1040" #Selectable modes: [antares,1040,dmc]
 mode = "write" #Selectable modes: [read,write]
+#============================================================================
+#Time_parameters:
+#============================================================================
+frequency = 10
+blink_time = 5
 #============================================================================
 # SECRET_KEY_FOR_ENCODING:
 #============================================================================
@@ -62,26 +69,8 @@ secret_key = load_secret_key()
 print(secret_key)
 '''
 #============================================================================
-# FUNCTION_BLOCKS_FOR_LED:
-#============================================================================
-timer_led = Timer()
-#Time_parameters:
-frequency = 10
-blink_time = 5
-
-def blink_for_time(led, freq, duration_sec):
-    period = 1 / freq
-    start = ticks_ms()
-
-    while ticks_diff(ticks_ms(), start) < duration_sec * 1000:
-        led.on()
-        sleep(period / 2)
-        led.off()
-        sleep(period / 2)
-#============================================================================
 # FUNCTION_BLOCKS_FOR_MRFC522:
 #============================================================================
-
 def read():
     print("Reading...Please Place the Card...")
     idRead, textRead = reader.read()
@@ -140,97 +129,25 @@ def wait_until_card_removed(reader, poll_ms=80):
         except Exception:
             # Loop újraindítás.
             sleep(poll_ms / 1000)
-
-
-#============================================================================
-# Funkció_blokkok, Géptípusok:
-#============================================================================            
-def send_antares(keyboard, user, pwd):
-    #Com_start:
-    blink_for_time(yellow_led, frequency, blink_time)
-    
-    keyboard.write(user)
-    keyboard.tab()
-    time.sleep(1)
-    keyboard.write(pwd)
-    keyboard.enter()
-    
-    #Com_end:
-    yellow_led.off()
-    
-def send_bec1040(keyboard, user, pwd):
-    #Ciklus: USER,ENTER,PWD,ENTER,ENTER
-    
-    #Com_start:
-    blink_for_time(yellow_led, frequency, blink_time)
-    
-    #Writing:
-    #Space beírása és teszt
-    keyboard.space()
-    keyboard.write(user)
-    keyboard.enter()
-    time.sleep(0.5)
-    
-    keyboard.write(pwd)
-    keyboard.enter()
-    time.sleep(0.5)
-    
-    keyboard.enter()
-    
-    #Com_end:
-    yellow_led.off()
-    
-def send_dmc(keyboard, user, pwd):
-    
-    #Com_start:
-    blink_for_time(yellow_led, frequency, blink_time)
-    
-    #Writing:
-    keyboard.write(pwd)
-    keyboard.enter()
-    
-    #Com_end:
-    yellow_led.off()
-                                   
-#============================================================================
-# Parse
-#============================================================================
-def parse_command(cmd):
-    parts = cmd.strip().split("|")
-    
-    if parts[0] == "WRITE" and len(parts) == 3:
-        return ("WRITE", parts[1], parts[2])
-    
-    elif parts[0] == "READ":
-        return ("READ",)
-    
-    return None
 #============================================================================
 # Encryption_Decryption:
 #============================================================================
 secret_key = " "
-
 def encryption():
     pass
 
 def decryption():
-    pass
-#============================================================================
-# Setting pin states
-#============================================================================        
-
-"PIN_SETTER_AT_START"
-red_led.off()
-yellow_led.off()
-green_led.off()
-
+    pass      
 #============================================================================
 # Main_cycle:
 #============================================================================
+# Setting pin states
+red_led.off()
+yellow_led.off()
+green_led.off()
 while True:
             
             green_led.on()
-            
             if mode == "read":
                 print("System start to run")
                 #Data Read and parseing:
@@ -241,24 +158,14 @@ while True:
                     red_led.on()
                     print("Error:Data format incorrect", data)
                     continue
-                
-                #Line_mode_shifter:                         
-                if machine == "antares":
-                    send_antares(keyboard, username, password)
+                #Line_mode_shifter:
 
-                elif machine == "1040":
-                    send_bec1040(keyboard, username, password)
-                
-                elif machine == "dmc":
-                    send_dmc(keyboard, username, password)
-                
-                else:
-                    red_led.on()
-                    print("Not found machine name error.Please change name.")
-                    raise NameError("Not found machine name.")
+                manufacturing_machine(machine_type,yellow_led,red_led,keyboard,username,password)      
                 wait_until_card_removed(reader)
                 
             elif mode == "write":
+                rfid_write()
+                '''
                 cmd = sys.stdin.readline().strip()
 
                 if not cmd:
@@ -287,7 +194,7 @@ while True:
                         print("ERROR", e)
 
             time.sleep(0.05)
-            
+            '''
 
             
 
