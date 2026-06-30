@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "RFC522_RFID_Reader")(type "KiCad")(uri "${KIPRJMOD}/RFC522_RFID_Reader.kicad_sym")(options "")(descr ""))
+)

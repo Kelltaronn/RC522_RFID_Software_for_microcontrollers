@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "Raspberry Pico footprints")(type "KiCad")(uri "${KIPRJMOD}/Raspberry Pico footprints.pretty")(options "")(descr ""))
+)
